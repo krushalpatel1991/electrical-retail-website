@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   ArrowRight,
@@ -27,32 +27,17 @@ import {
 } from 'lucide-react'
 import './styles.css'
 
-const categories = ['All products', 'Lighting', 'Power & Cables', 'Switchgear', 'Tools & Testing']
-
-const products = [
-  { id: 1, name: 'ProShield 13A Power Strip', category: 'Power & Cables', price: 24.99, rating: 4.8, badge: 'Best seller', color: '#dbeafe', icon: '🔌', stock: 35, description: 'Surge-protected power strip with 6 outlets and 2-meter cable for home and office setup.' },
-  { id: 2, name: 'LumaMax LED Bulb 12W Pack', category: 'Lighting', price: 18.5, rating: 4.7, badge: 'Save 15%', color: '#fef3c7', icon: '💡', stock: 42, description: 'Energy-efficient LED bulbs with warm light output and long-life performance.' },
-  { id: 3, name: 'SafeHome Smart Breaker', category: 'Switchgear', price: 59.99, rating: 4.9, badge: 'New', color: '#dcfce7', icon: '⚡', stock: 8, description: 'Advanced circuit protection with smart trip feedback for safer homes and shops.' },
-  { id: 4, name: 'FlexiCore Copper Wire 25m', category: 'Power & Cables', price: 42.0, rating: 4.6, badge: '', color: '#ffedd5', icon: '🧵', stock: 12, description: 'Premium copper wiring for commercial and residential installations.' },
-  { id: 5, name: 'ArcGuard Outdoor Light', category: 'Lighting', price: 74.95, rating: 4.8, badge: 'Popular', color: '#e0e7ff', icon: '🔦', stock: 21, description: 'Weatherproof security light for gardens, gates, and exterior entrances.' },
-  { id: 6, name: 'VoltMate Digital Multimeter', category: 'Tools & Testing', price: 35.0, rating: 4.5, badge: '', color: '#fce7f3', icon: '🛠️', stock: 14, description: 'Accurate multimeter with voltage, continuity, and diode testing features.' },
-  { id: 7, name: 'EcoFlow 3-Phase Socket', category: 'Switchgear', price: 89.99, rating: 4.7, badge: 'Top rated', color: '#e2e8f0', icon: '🔋', stock: 9, description: 'Heavy-duty socket panel with safety lock and durable industrial-grade casing.' },
-  { id: 8, name: 'PureBeam LED Floodlight', category: 'Lighting', price: 62.0, rating: 4.9, badge: 'Hot', color: '#f0fdf4', icon: '📡', stock: 18, description: 'High-intensity floodlight designed for warehouse and exterior lighting needs.' },
-]
-
-const adminInventory = [
-  { id: 1, sku: 'VLT-001', name: 'Power Strip', stock: 38, price: 24.99, status: 'Healthy' },
-  { id: 2, sku: 'VLT-002', name: 'LED Bulbs', stock: 12, price: 18.5, status: 'Healthy' },
-  { id: 3, sku: 'VLT-003', name: 'Smart Breaker', stock: 8, price: 59.99, status: 'Low stock' },
-  { id: 4, sku: 'VLT-004', name: 'Copper Wire', stock: 14, price: 42.0, status: 'Healthy' },
-  { id: 5, sku: 'VLT-005', name: 'Outdoor Light', stock: 5, price: 74.95, status: 'Low stock' },
-]
+const API_BASE = 'http://localhost:3001/api'
 
 function formatMoney(value) {
   return `$${value.toFixed(2)}`
 }
 
 function App() {
+  const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState(['All products'])
+  const [inventory, setInventory] = useState([])
+
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All products')
   const [sortBy, setSortBy] = useState('featured')
@@ -64,6 +49,8 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [loginMode, setLoginMode] = useState('login')
   const [notice, setNotice] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [currentUser, setCurrentUser] = useState(null)
   const [checkoutForm, setCheckoutForm] = useState({
     name: '',
     email: '',
@@ -71,6 +58,30 @@ function App() {
     city: '',
     card: '',
   })
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const [productsRes, categoriesRes, inventoryRes] = await Promise.all([
+          fetch(`${API_BASE}/products`).then((res) => res.json()),
+          fetch(`${API_BASE}/categories`).then((res) => res.json()),
+          fetch(`${API_BASE}/inventory`).then((res) => res.json()),
+        ])
+
+        setProducts(productsRes)
+        setCategories(categoriesRes)
+        setInventory(inventoryRes)
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        showNotice('Failed to load products')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const visibleProducts = useMemo(() => {
     let filtered = products.filter((product) => {
@@ -88,11 +99,11 @@ function App() {
     }
 
     return filtered
-  }, [query, category, sortBy])
+  }, [query, category, sortBy, products])
 
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const lowStockCount = adminInventory.filter((item) => item.stock < 10).length
+  const lowStockCount = inventory.filter((item) => item.stock < 10).length
 
   function showNotice(message) {
     setNotice(message)
@@ -122,12 +133,80 @@ function App() {
     )
   }
 
-  function handleCheckoutSubmit(event) {
+  async function handleLogin(email, password) {
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setCurrentUser(data.user)
+        setAccountOpen(false)
+        showNotice(`Welcome back, ${data.user.name}!`)
+      } else {
+        showNotice(data.message || 'Login failed')
+      }
+    } catch (error) {
+      showNotice('Login error')
+    }
+  }
+
+  async function handleSignup(name, email, password) {
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setCurrentUser(data.user)
+        setAccountOpen(false)
+        showNotice(`Account created! Welcome, ${data.user.name}!`)
+      } else {
+        showNotice(data.message || 'Signup failed')
+      }
+    } catch (error) {
+      showNotice('Signup error')
+    }
+  }
+
+  async function handleCheckoutSubmit(event) {
     event.preventDefault()
-    setCart([])
-    setCheckoutOpen(false)
-    showNotice('Payment successful. Order confirmed.')
-    setCheckoutForm({ name: '', email: '', address: '', city: '', card: '' })
+    try {
+      const res = await fetch(`${API_BASE}/orders/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: cart,
+          customer: checkoutForm,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setCart([])
+        setCheckoutOpen(false)
+        showNotice('Payment successful. Order confirmed.')
+        setCheckoutForm({ name: '', email: '', address: '', city: '', card: '' })
+      } else {
+        showNotice(data.message || 'Checkout failed')
+      }
+    } catch (error) {
+      showNotice('Checkout error')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', color: '#1c2c24' }}>
+        <div>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚡</div>
+          <h2>Loading VoltCart...</h2>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -143,17 +222,35 @@ function App() {
         </a>
 
         <nav className={menuOpen ? 'nav open' : 'nav'}>
-          <a href="#home" onClick={() => setMenuOpen(false)}>Home</a>
-          <a href="#shop" onClick={() => setMenuOpen(false)}>Shop</a>
-          <a href="#categories" onClick={() => setMenuOpen(false)}>Categories</a>
-          <a href="#about" onClick={() => setMenuOpen(false)}>About us</a>
-          <a href="#contact" onClick={() => setMenuOpen(false)}>Contact</a>
-          <a href="#admin" onClick={() => setMenuOpen(false)}>Admin</a>
+          <a href="#home" onClick={() => setMenuOpen(false)}>
+            Home
+          </a>
+          <a href="#shop" onClick={() => setMenuOpen(false)}>
+            Shop
+          </a>
+          <a href="#categories" onClick={() => setMenuOpen(false)}>
+            Categories
+          </a>
+          <a href="#about" onClick={() => setMenuOpen(false)}>
+            About us
+          </a>
+          <a href="#contact" onClick={() => setMenuOpen(false)}>
+            Contact
+          </a>
+          <a href="#admin" onClick={() => setMenuOpen(false)}>
+            Admin
+          </a>
         </nav>
 
         <div className="header-actions">
-          <button className="icon-button" aria-label="Account" onClick={() => setAccountOpen(true)}>
+          <button
+            className="icon-button"
+            aria-label="Account"
+            onClick={() => setAccountOpen(true)}
+            title={currentUser ? `Logged in as ${currentUser.name}` : 'Login or signup'}
+          >
             <UserRound size={18} />
+            {currentUser && <span style={{ marginLeft: '4px', fontSize: '11px' }}>✓</span>}
           </button>
           <button className="cart-button" onClick={() => setCartOpen(true)}>
             <ShoppingCart size={17} />
@@ -256,7 +353,7 @@ function App() {
               { name: 'Lighting', icon: '💡', desc: 'Bright ideas for every room', className: 'lighting' },
               { name: 'Power & Cables', icon: '🔌', desc: 'Stay connected and safe', className: 'cables' },
               { name: 'Switchgear', icon: '⚡', desc: 'Protection that works hard', className: 'switchgear' },
-              { name: 'Tools & Testing', icon: '🛠️', desc: 'Precision and control', className: 'tools' },
+              { name: 'Tools & Testing', icon: '🔧', desc: 'Precision and control', className: 'tools' },
             ].map((item) => (
               <button
                 key={item.name}
@@ -407,9 +504,7 @@ function App() {
           <div className="contact-copy">
             <p className="eyebrow">CONTACT US</p>
             <h2>Need expert help for your next project?</h2>
-            <p>
-              Tell us what you’re working on and we’ll help you find the right products, quantities, and setup.
-            </p>
+            <p>Tell us what you're working on and we'll help you find the right products, quantities, and setup.</p>
             <div className="contact-list">
               <span>
                 <Phone size={15} /> +1 (415) 775-9901
@@ -448,14 +543,14 @@ function App() {
               <div className="metric">
                 <Package2 size={18} />
                 <span>
-                  <strong>8</strong>
-                  <small>Product categories</small>
+                  <strong>{products.length}</strong>
+                  <small>Total products</small>
                 </span>
               </div>
               <div className="metric">
                 <Warehouse size={18} />
                 <span>
-                  <strong>{adminInventory.length}</strong>
+                  <strong>{inventory.length}</strong>
                   <small>Tracked SKUs</small>
                 </span>
               </div>
@@ -469,7 +564,7 @@ function App() {
             </div>
 
             <div className="inventory-list">
-              {adminInventory.map((item) => (
+              {inventory.map((item) => (
                 <div className="inventory-row" key={item.id}>
                   <div>
                     <strong>{item.name}</strong>
@@ -554,29 +649,62 @@ function App() {
         <div className="overlay" onClick={() => setAccountOpen(false)}>
           <aside className="drawer-panel" onClick={(event) => event.stopPropagation()}>
             <div className="drawer-header">
-              <h3>{loginMode === 'login' ? 'Account access' : 'Create account'}</h3>
+              <h3>{currentUser ? `Welcome, ${currentUser.name}` : loginMode === 'login' ? 'Account access' : 'Create account'}</h3>
               <button onClick={() => setAccountOpen(false)} aria-label="Close account panel">
                 <X size={18} />
               </button>
             </div>
 
-            <div className="switcher">
-              <button className={loginMode === 'login' ? 'active' : ''} onClick={() => setLoginMode('login')}>
-                Login
-              </button>
-              <button className={loginMode === 'signup' ? 'active' : ''} onClick={() => setLoginMode('signup')}>
-                Sign up
-              </button>
-            </div>
+            {currentUser ? (
+              <div style={{ padding: '20px 0' }}>
+                <div style={{ background: '#f1f6f2', padding: '16px', borderRadius: '10px', marginBottom: '16px' }}>
+                  <p style={{ margin: 0, color: '#516760', fontSize: '12px' }}>Logged in as</p>
+                  <strong style={{ display: 'block', fontSize: '16px', marginTop: '4px' }}>{currentUser.name}</strong>
+                  <small style={{ color: '#7a887f' }}>{currentUser.email}</small>
+                </div>
+                <button
+                  className="primary-button"
+                  style={{ width: '100%' }}
+                  onClick={() => {
+                    setCurrentUser(null)
+                    setAccountOpen(false)
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="switcher">
+                  <button className={loginMode === 'login' ? 'active' : ''} onClick={() => setLoginMode('login')}>
+                    Login
+                  </button>
+                  <button className={loginMode === 'signup' ? 'active' : ''} onClick={() => setLoginMode('signup')}>
+                    Sign up
+                  </button>
+                </div>
 
-            <form className="account-form" onSubmit={(event) => event.preventDefault()}>
-              {loginMode === 'signup' && <input type="text" placeholder="Full name" />}
-              <input type="email" placeholder="Email address" />
-              <input type="password" placeholder="Password" />
-              <button type="submit" className="primary-button">
-                {loginMode === 'login' ? 'Login' : 'Create account'}
-              </button>
-            </form>
+                <form
+                  className="account-form"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    const formData = new FormData(event.target)
+                    if (loginMode === 'login') {
+                      handleLogin(formData.get('email'), formData.get('password'))
+                    } else {
+                      handleSignup(formData.get('name'), formData.get('email'), formData.get('password'))
+                    }
+                  }}
+                >
+                  {loginMode === 'signup' && <input type="text" name="name" placeholder="Full name" required />}
+                  <input type="email" name="email" placeholder="Email address" required />
+                  <input type="password" name="password" placeholder="Password" required />
+                  <button type="submit" className="primary-button">
+                    {loginMode === 'login' ? 'Login' : 'Create account'}
+                  </button>
+                </form>
+              </>
+            )}
           </aside>
         </div>
       )}
