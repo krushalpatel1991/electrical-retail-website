@@ -1,66 +1,716 @@
 import React, { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Search, ShoppingCart, UserRound, Menu, X, ChevronRight, ShieldCheck, Truck, Headphones, Star, Plus, Minus, Trash2, ArrowRight } from 'lucide-react'
+import {
+  ArrowRight,
+  BadgeCheck,
+  ChevronRight,
+  CreditCard,
+  Eye,
+  Headphones,
+  Mail,
+  MapPin,
+  Menu,
+  Minus,
+  Package2,
+  Phone,
+  Plus,
+  Search,
+  ShieldCheck,
+  ShoppingCart,
+  Star,
+  Trash2,
+  Truck,
+  UserRound,
+  Warehouse,
+  X,
+  Zap,
+} from 'lucide-react'
 import './styles.css'
 
-const products = [
-  { id: 1, name: 'ProShield 13A Power Strip', category: 'Power & Cables', price: 24.99, rating: 4.8, badge: 'Best seller', color: '#dbeafe', icon: '🔌' },
-  { id: 2, name: 'LumaMax LED Bulb 12W (Pack of 4)', category: 'Lighting', price: 18.5, rating: 4.7, badge: 'Save 15%', color: '#fef3c7', icon: '💡' },
-  { id: 3, name: 'SafeHome Smart Circuit Breaker', category: 'Switchgear', price: 59.99, rating: 4.9, badge: 'New', color: '#dcfce7', icon: '⚡' },
-  { id: 4, name: 'FlexiCore Copper Wire 25m', category: 'Power & Cables', price: 42.0, rating: 4.6, badge: '', color: '#ffedd5', icon: '🧵' },
-  { id: 5, name: 'ArcGuard Outdoor Security Light', category: 'Lighting', price: 74.95, rating: 4.8, badge: 'Popular', color: '#e0e7ff', icon: '🔦' },
-  { id: 6, name: 'VoltMate Digital Multimeter', category: 'Tools & Testing', price: 35.0, rating: 4.5, badge: '', color: '#fce7f3', icon: '🛠️' },
-]
 const categories = ['All products', 'Lighting', 'Power & Cables', 'Switchgear', 'Tools & Testing']
+
+const products = [
+  { id: 1, name: 'ProShield 13A Power Strip', category: 'Power & Cables', price: 24.99, rating: 4.8, badge: 'Best seller', color: '#dbeafe', icon: '🔌', stock: 35, description: 'Surge-protected power strip with 6 outlets and 2-meter cable for home and office setup.' },
+  { id: 2, name: 'LumaMax LED Bulb 12W Pack', category: 'Lighting', price: 18.5, rating: 4.7, badge: 'Save 15%', color: '#fef3c7', icon: '💡', stock: 42, description: 'Energy-efficient LED bulbs with warm light output and long-life performance.' },
+  { id: 3, name: 'SafeHome Smart Breaker', category: 'Switchgear', price: 59.99, rating: 4.9, badge: 'New', color: '#dcfce7', icon: '⚡', stock: 8, description: 'Advanced circuit protection with smart trip feedback for safer homes and shops.' },
+  { id: 4, name: 'FlexiCore Copper Wire 25m', category: 'Power & Cables', price: 42.0, rating: 4.6, badge: '', color: '#ffedd5', icon: '🧵', stock: 12, description: 'Premium copper wiring for commercial and residential installations.' },
+  { id: 5, name: 'ArcGuard Outdoor Light', category: 'Lighting', price: 74.95, rating: 4.8, badge: 'Popular', color: '#e0e7ff', icon: '🔦', stock: 21, description: 'Weatherproof security light for gardens, gates, and exterior entrances.' },
+  { id: 6, name: 'VoltMate Digital Multimeter', category: 'Tools & Testing', price: 35.0, rating: 4.5, badge: '', color: '#fce7f3', icon: '🛠️', stock: 14, description: 'Accurate multimeter with voltage, continuity, and diode testing features.' },
+  { id: 7, name: 'EcoFlow 3-Phase Socket', category: 'Switchgear', price: 89.99, rating: 4.7, badge: 'Top rated', color: '#e2e8f0', icon: '🔋', stock: 9, description: 'Heavy-duty socket panel with safety lock and durable industrial-grade casing.' },
+  { id: 8, name: 'PureBeam LED Floodlight', category: 'Lighting', price: 62.0, rating: 4.9, badge: 'Hot', color: '#f0fdf4', icon: '📡', stock: 18, description: 'High-intensity floodlight designed for warehouse and exterior lighting needs.' },
+]
+
+const adminInventory = [
+  { id: 1, sku: 'VLT-001', name: 'Power Strip', stock: 38, price: 24.99, status: 'Healthy' },
+  { id: 2, sku: 'VLT-002', name: 'LED Bulbs', stock: 12, price: 18.5, status: 'Healthy' },
+  { id: 3, sku: 'VLT-003', name: 'Smart Breaker', stock: 8, price: 59.99, status: 'Low stock' },
+  { id: 4, sku: 'VLT-004', name: 'Copper Wire', stock: 14, price: 42.0, status: 'Healthy' },
+  { id: 5, sku: 'VLT-005', name: 'Outdoor Light', stock: 5, price: 74.95, status: 'Low stock' },
+]
+
+function formatMoney(value) {
+  return `$${value.toFixed(2)}`
+}
 
 function App() {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All products')
-  const [sort, setSort] = useState('featured')
+  const [sortBy, setSortBy] = useState('featured')
   const [cart, setCart] = useState([])
   const [cartOpen, setCartOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [loginMode, setLoginMode] = useState('login')
   const [notice, setNotice] = useState('')
+  const [checkoutForm, setCheckoutForm] = useState({
+    name: '',
+    email: '',
+    address: '',
+    city: '',
+    card: '',
+  })
 
   const visibleProducts = useMemo(() => {
-    const filtered = products.filter(p => (category === 'All products' || p.category === category) && p.name.toLowerCase().includes(query.toLowerCase()))
-    return [...filtered].sort((a, b) => sort === 'price-low' ? a.price - b.price : sort === 'price-high' ? b.price - a.price : b.rating - a.rating)
-  }, [query, category, sort])
+    let filtered = products.filter((product) => {
+      const matchesCategory = category === 'All products' || product.category === category
+      const matchesSearch = product.name.toLowerCase().includes(query.toLowerCase())
+      return matchesCategory && matchesSearch
+    })
 
-  const count = cart.reduce((sum, item) => sum + item.quantity, 0)
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    if (sortBy === 'price-low') {
+      filtered = [...filtered].sort((a, b) => a.price - b.price)
+    } else if (sortBy === 'price-high') {
+      filtered = [...filtered].sort((a, b) => b.price - a.price)
+    } else if (sortBy === 'rating') {
+      filtered = [...filtered].sort((a, b) => b.rating - a.rating)
+    }
+
+    return filtered
+  }, [query, category, sortBy])
+
+  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const lowStockCount = adminInventory.filter((item) => item.stock < 10).length
+
+  function showNotice(message) {
+    setNotice(message)
+    window.setTimeout(() => setNotice(''), 2500)
+  }
 
   function addToCart(product) {
-    setCart(current => {
-      const existing = current.find(item => item.id === product.id)
-      return existing ? current.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item) : [...current, { ...product, quantity: 1 }]
+    setCart((current) => {
+      const existing = current.find((item) => item.id === product.id)
+      if (existing) {
+        return current.map((item) =>
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+        )
+      }
+      return [...current, { ...product, quantity: 1 }]
     })
-    setNotice(`${product.name} added to cart`)
-    setTimeout(() => setNotice(''), 2200)
-  }
-  function updateQuantity(id, change) {
-    setCart(current => current.map(item => item.id === id ? { ...item, quantity: Math.max(0, item.quantity + change) } : item).filter(item => item.quantity > 0))
+    showNotice(`${product.name} added to cart`)
   }
 
-  return <>
-    <div className="announcement">Free delivery on orders over $50 <span>·</span> Support from real electrical experts</div>
-    <header className="header">
-      <a className="logo" href="#top"><span className="logo-mark">V</span><span>volt<span>cart</span></span></a>
-      <nav className={menuOpen ? 'nav open' : 'nav'}>{['Shop', 'Categories', 'Deals', 'About us', 'Contact'].map((item, i) => <a key={item} href={i === 0 ? '#products' : i === 1 ? '#categories' : '#footer'} onClick={() => setMenuOpen(false)}>{item}</a>)}</nav>
-      <div className="header-actions"><button className="icon-button" aria-label="Account"><UserRound size={20} /></button><button className="cart-button" onClick={() => setCartOpen(true)}><ShoppingCart size={19} /> Cart {count > 0 && <b>{count}</b>}</button><button className="mobile-menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button></div>
-    </header>
+  function updateQuantity(id, delta) {
+    setCart((current) =>
+      current
+        .map((item) =>
+          item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item,
+        )
+        .filter((item) => item.quantity > 0),
+    )
+  }
 
-    <main id="top">
-      <section className="hero"><div className="hero-copy"><p className="eyebrow">POWER YOUR EVERYDAY</p><h1>Electrical essentials,<br /><em>made simple.</em></h1><p className="hero-text">Quality electrical supplies for home projects, professional jobs, and everything in between. Delivered to your door.</p><div className="hero-actions"><a className="primary-button" href="#products">Shop products <ArrowRight size={17} /></a><a className="text-link" href="#categories">Browse categories <ChevronRight size={16} /></a></div><div className="trust-row"><span><ShieldCheck size={18} /> Quality checked</span><span><Truck size={18} /> Fast delivery</span></div></div><div className="hero-art"><div className="sun"></div><div className="hero-card card-one">⚡<span>Safe & reliable</span></div><div className="hero-card card-two">LED<span>Save energy</span></div><div className="wire"></div><div className="hero-plug">🔌</div></div></section>
-      <section className="benefits"><div><Truck /><span><strong>Fast, reliable delivery</strong><small>On orders over $50</small></span></div><div><ShieldCheck /><span><strong>Quality guaranteed</strong><small>Products you can trust</small></span></div><div><Headphones /><span><strong>Expert support</strong><small>Here when you need us</small></span></div></section>
-      <section className="categories-section" id="categories"><div className="section-heading"><div><p className="eyebrow">SHOP BY NEED</p><h2>Find the right fit.</h2></div><a className="text-link" href="#products">View all categories <ArrowRight size={16} /></a></div><div className="category-grid">{[['Lighting','Bright ideas for every room','💡','lighting'],['Power & Cables','Keep everything connected','🔌','cables'],['Switchgear','Protection that works hard','⚡','switchgear'],['Tools & Testing','Work smarter and safer','🛠️','tools']].map(([name, desc, icon, type]) => <button key={name} className={`category-card ${type}`} onClick={() => { setCategory(name); document.getElementById('products').scrollIntoView({ behavior: 'smooth' }) }}><span className="category-icon">{icon}</span><span><strong>{name}</strong><small>{desc}</small></span><ChevronRight size={18} /></button>)}</div></section>
-      <section className="products-section" id="products"><div className="section-heading"><div><p className="eyebrow">OUR PICKS</p><h2>Popular products.</h2></div><div className="product-tools"><label className="search"><Search size={18} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search products..." /></label><select value={sort} onChange={e => setSort(e.target.value)}><option value="featured">Sort: Featured</option><option value="price-low">Price: Low to high</option><option value="price-high">Price: High to low</option></select></div></div><div className="filter-row">{categories.map(item => <button className={category === item ? 'active' : ''} key={item} onClick={() => setCategory(item)}>{item}</button>)}</div><div className="product-grid">{visibleProducts.map(product => <article className="product-card" key={product.id}><div className="product-image" style={{ background: product.color }}>{product.badge && <span className="badge">{product.badge}</span>}<span className="product-emoji">{product.icon}</span></div><div className="product-info"><p className="product-category">{product.category}</p><h3>{product.name}</h3><div className="rating"><span>★</span> {product.rating} <small>(24)</small></div><div className="product-bottom"><strong>${product.price.toFixed(2)}</strong><button className="add-button" onClick={() => addToCart(product)}><Plus size={17} /> Add</button></div></div></article>)}</div>{visibleProducts.length === 0 && <p className="empty">No products found. Try another search or category.</p>}</section>
-      <section className="newsletter"><div><p className="eyebrow">STAY IN THE LOOP</p><h2>Good ideas, delivered.</h2><p>Get product tips, project inspiration, and exclusive offers in your inbox.</p></div><form onSubmit={e => { e.preventDefault(); setNotice('Thanks — you are on the list!') }}><input type="email" required placeholder="Your email address" /><button className="primary-button">Subscribe <ArrowRight size={16} /></button></form></section>
-    </main>
-    <footer id="footer"><div className="footer-main"><div><a className="logo light" href="#top"><span className="logo-mark">V</span><span>volt<span>cart</span></span></a><p>Electrical supplies made simple<br />for every kind of project.</p></div><div><h4>Shop</h4><a href="#products">All products</a><a href="#categories">Categories</a><a href="#products">Deals</a></div><div><h4>Help</h4><a href="#footer">Contact us</a><a href="#footer">Delivery & returns</a><a href="#footer">FAQs</a></div><div><h4>Company</h4><a href="#footer">About us</a><a href="#footer">Our promise</a><a href="#footer">Privacy policy</a></div></div><div className="footer-bottom">© 2024 VoltCart. Built for better connections. <span>Secure checkout · Trusted service</span></div></footer>
-    {notice && <div className="toast">{notice}</div>}
-    {cartOpen && <div className="overlay" onClick={() => setCartOpen(false)}><aside className="cart-drawer" onClick={e => e.stopPropagation()}><div className="drawer-heading"><h2>Your cart <small>({count})</small></h2><button onClick={() => setCartOpen(false)}><X /></button></div>{cart.length === 0 ? <div className="empty-cart"><ShoppingCart size={42} /><h3>Your cart is empty</h3><p>Add something useful for your next project.</p><button className="primary-button" onClick={() => setCartOpen(false)}>Start shopping</button></div> : <><div className="cart-items">{cart.map(item => <div className="cart-item" key={item.id}><div className="cart-thumb" style={{ background: item.color }}>{item.icon}</div><div><h3>{item.name}</h3><strong>${item.price.toFixed(2)}</strong><div className="quantity"><button onClick={() => updateQuantity(item.id, -1)}><Minus size={13} /></button><span>{item.quantity}</span><button onClick={() => updateQuantity(item.id, 1)}><Plus size={13} /></button><button className="remove" onClick={() => setCart(current => current.filter(i => i.id !== item.id))}><Trash2 size={14} /></button></div></div></div>)}</div><div className="cart-summary"><div><span>Subtotal</span><strong>${total.toFixed(2)}</strong></div><small>Taxes and delivery calculated at checkout.</small><button className="primary-button checkout" onClick={() => setNotice('Checkout is ready to connect to Stripe.')}>Proceed to checkout <ArrowRight size={16} /></button></div></>}</aside></div>}
-  </>
+  function handleCheckoutSubmit(event) {
+    event.preventDefault()
+    setCart([])
+    setCheckoutOpen(false)
+    showNotice('Payment successful. Order confirmed.')
+    setCheckoutForm({ name: '', email: '', address: '', city: '', card: '' })
+  }
+
+  return (
+    <>
+      <div className="announcement">Free delivery on orders over $50 · Trusted by homeowners and contractors</div>
+
+      <header className="header">
+        <a href="#home" className="logo" aria-label="VoltCart home">
+          <span className="logo-mark">V</span>
+          <span>
+            volt<span>cart</span>
+          </span>
+        </a>
+
+        <nav className={menuOpen ? 'nav open' : 'nav'}>
+          <a href="#home" onClick={() => setMenuOpen(false)}>Home</a>
+          <a href="#shop" onClick={() => setMenuOpen(false)}>Shop</a>
+          <a href="#categories" onClick={() => setMenuOpen(false)}>Categories</a>
+          <a href="#about" onClick={() => setMenuOpen(false)}>About us</a>
+          <a href="#contact" onClick={() => setMenuOpen(false)}>Contact</a>
+          <a href="#admin" onClick={() => setMenuOpen(false)}>Admin</a>
+        </nav>
+
+        <div className="header-actions">
+          <button className="icon-button" aria-label="Account" onClick={() => setAccountOpen(true)}>
+            <UserRound size={18} />
+          </button>
+          <button className="cart-button" onClick={() => setCartOpen(true)}>
+            <ShoppingCart size={17} />
+            Cart
+            {itemCount > 0 && <span>{itemCount}</span>}
+          </button>
+          <button className="mobile-menu" onClick={() => setMenuOpen((value) => !value)} aria-label="Toggle menu">
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </header>
+
+      <main id="home">
+        <section className="hero">
+          <div className="hero-copy">
+            <p className="eyebrow">POWER EVERY PROJECT</p>
+            <h1>
+              Electrical essentials,
+              <em>made easy.</em>
+            </h1>
+            <p className="hero-text">
+              Shop trusted lighting, wiring, power solutions, tools, and safety equipment for homes,
+              offices, and commercial spaces.
+            </p>
+
+            <div className="hero-actions">
+              <a href="#shop" className="primary-button">
+                Shop products
+                <ArrowRight size={17} />
+              </a>
+              <a href="#about" className="text-link">
+                Why choose us
+                <ChevronRight size={16} />
+              </a>
+            </div>
+
+            <div className="trust-row">
+              <span>
+                <ShieldCheck size={16} /> Quality checked
+              </span>
+              <span>
+                <Truck size={16} /> Fast delivery
+              </span>
+            </div>
+          </div>
+
+          <div className="hero-art" aria-hidden="true">
+            <div className="sun" />
+            <div className="hero-card card-one">
+              <Zap size={28} />
+              <span>Safe & reliable</span>
+            </div>
+            <div className="hero-card card-two">
+              LED
+              <span>Save energy</span>
+            </div>
+            <div className="wire" />
+            <div className="hero-plug">🔌</div>
+          </div>
+        </section>
+
+        <section className="benefits">
+          <div>
+            <Truck size={21} />
+            <span>
+              <strong>Fast delivery</strong>
+              <small>Next-day dispatch on top items</small>
+            </span>
+          </div>
+          <div>
+            <ShieldCheck size={21} />
+            <span>
+              <strong>Quality guaranteed</strong>
+              <small>Products tested for daily use</small>
+            </span>
+          </div>
+          <div>
+            <Headphones size={21} />
+            <span>
+              <strong>Expert support</strong>
+              <small>Friendly help for every project</small>
+            </span>
+          </div>
+        </section>
+
+        <section className="categories-section" id="categories">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">SHOP BY NEED</p>
+              <h2>Popular categories</h2>
+            </div>
+            <a href="#shop" className="text-link">
+              Browse all products
+              <ArrowRight size={16} />
+            </a>
+          </div>
+
+          <div className="category-grid">
+            {[
+              { name: 'Lighting', icon: '💡', desc: 'Bright ideas for every room', className: 'lighting' },
+              { name: 'Power & Cables', icon: '🔌', desc: 'Stay connected and safe', className: 'cables' },
+              { name: 'Switchgear', icon: '⚡', desc: 'Protection that works hard', className: 'switchgear' },
+              { name: 'Tools & Testing', icon: '🛠️', desc: 'Precision and control', className: 'tools' },
+            ].map((item) => (
+              <button
+                key={item.name}
+                className={`category-card ${item.className}`}
+                onClick={() => {
+                  setCategory(item.name)
+                  document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' })
+                }}
+              >
+                <span className="category-icon">{item.icon}</span>
+                <span>
+                  <strong>{item.name}</strong>
+                  <small>{item.desc}</small>
+                </span>
+                <ChevronRight size={17} />
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="products-section" id="shop">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">OUR PICKS</p>
+              <h2>Top electrical products</h2>
+            </div>
+
+            <div className="product-tools">
+              <label className="search-box">
+                <Search size={16} />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search products"
+                />
+              </label>
+
+              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                <option value="featured">Featured</option>
+                <option value="rating">Top rated</option>
+                <option value="price-low">Price low to high</option>
+                <option value="price-high">Price high to low</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="filter-row">
+            {categories.map((item) => (
+              <button
+                key={item}
+                className={category === item ? 'active' : ''}
+                onClick={() => setCategory(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          <div className="product-grid">
+            {visibleProducts.map((product) => (
+              <article className="product-card" key={product.id}>
+                <div className="product-image" style={{ background: product.color }}>
+                  {product.badge && <span className="badge">{product.badge}</span>}
+                  <span className="product-emoji">{product.icon}</span>
+                </div>
+
+                <div className="product-info">
+                  <p className="product-category">{product.category}</p>
+                  <h3>{product.name}</h3>
+                  <div className="rating-row">
+                    <Star size={13} fill="currentColor" />
+                    <span>{product.rating}</span>
+                    <small>{product.stock} in stock</small>
+                  </div>
+
+                  <div className="product-bottom">
+                    <strong>{formatMoney(product.price)}</strong>
+                    <div className="product-actions">
+                      <button className="ghost-button" onClick={() => setSelectedProduct(product)}>
+                        <Eye size={14} />
+                        View
+                      </button>
+                      <button className="add-button" onClick={() => addToCart(product)}>
+                        <Plus size={14} />
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {visibleProducts.length === 0 && <p className="empty-state">No products match your search.</p>}
+        </section>
+
+        <section className="features">
+          <div className="feature-box">
+            <BadgeCheck size={22} />
+            <h3>Certified products</h3>
+            <p>Every item is selected for safety, reliability, and daily use.</p>
+          </div>
+          <div className="feature-box">
+            <Warehouse size={22} />
+            <h3>Inventory ready</h3>
+            <p>Our stock is tracked to keep essential electrical goods moving.</p>
+          </div>
+          <div className="feature-box">
+            <CreditCard size={22} />
+            <h3>Secure checkout</h3>
+            <p>Fast online payments built for a smoother customer experience.</p>
+          </div>
+        </section>
+
+        <section className="about-section" id="about">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">WHY CUSTOMERS CHOOSE US</p>
+              <h2>Built for homes, shops, and contractors.</h2>
+            </div>
+          </div>
+
+          <div className="about-grid">
+            <div className="about-card glass">
+              <p className="big-number">5000+</p>
+              <p>Products available across lighting, safety, and power systems</p>
+            </div>
+            <div className="about-card">
+              <h3>Our promise</h3>
+              <p>
+                We combine practical expertise, competitive pricing, and dependable service to help customers
+                complete every electrical job confidently.
+              </p>
+            </div>
+            <div className="about-card">
+              <h3>Why VoltCart</h3>
+              <ul>
+                <li>Hand-picked electrical brands</li>
+                <li>Same-day support for bulk projects</li>
+                <li>Clear pricing and no hidden fees</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="contact-section" id="contact">
+          <div className="contact-copy">
+            <p className="eyebrow">CONTACT US</p>
+            <h2>Need expert help for your next project?</h2>
+            <p>
+              Tell us what you’re working on and we’ll help you find the right products, quantities, and setup.
+            </p>
+            <div className="contact-list">
+              <span>
+                <Phone size={15} /> +1 (415) 775-9901
+              </span>
+              <span>
+                <Mail size={15} /> hello@voltcart.com
+              </span>
+              <span>
+                <MapPin size={15} /> 42 Market Street, San Francisco, CA
+              </span>
+            </div>
+          </div>
+
+          <form className="contact-form" onSubmit={(event) => event.preventDefault()}>
+            <input type="text" placeholder="Your name" />
+            <input type="email" placeholder="Your email" />
+            <textarea rows="4" placeholder="Tell us about your requirement" />
+            <button type="submit" className="primary-button">
+              Send enquiry
+              <ArrowRight size={16} />
+            </button>
+          </form>
+        </section>
+
+        <section className="admin-section" id="admin">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">ADMIN DASHBOARD</p>
+              <h2>Inventory overview</h2>
+            </div>
+            <span className="status-badge">{lowStockCount} low-stock items</span>
+          </div>
+
+          <div className="admin-grid">
+            <div className="admin-dash">
+              <div className="metric">
+                <Package2 size={18} />
+                <span>
+                  <strong>8</strong>
+                  <small>Product categories</small>
+                </span>
+              </div>
+              <div className="metric">
+                <Warehouse size={18} />
+                <span>
+                  <strong>{adminInventory.length}</strong>
+                  <small>Tracked SKUs</small>
+                </span>
+              </div>
+              <div className="metric">
+                <ShoppingCart size={18} />
+                <span>
+                  <strong>{itemCount}</strong>
+                  <small>Cart items</small>
+                </span>
+              </div>
+            </div>
+
+            <div className="inventory-list">
+              {adminInventory.map((item) => (
+                <div className="inventory-row" key={item.id}>
+                  <div>
+                    <strong>{item.name}</strong>
+                    <small>{item.sku}</small>
+                  </div>
+                  <span className={item.stock < 10 ? 'tag warning' : 'tag'}>{item.stock} in stock</span>
+                  <span className="price">{formatMoney(item.price)}</span>
+                  <span className={item.status === 'Low stock' ? 'status low' : 'status'}>{item.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer id="footer">
+        <div className="footer-main">
+          <div>
+            <a href="#home" className="logo light">
+              <span className="logo-mark">V</span>
+              <span>
+                volt<span>cart</span>
+              </span>
+            </a>
+            <p>Trusted electrical products for smarter living, safer spaces, and dependable projects.</p>
+          </div>
+          <div>
+            <h4>Shop</h4>
+            <a href="#shop">All products</a>
+            <a href="#categories">Categories</a>
+            <a href="#admin">Inventory</a>
+          </div>
+          <div>
+            <h4>Company</h4>
+            <a href="#about">About us</a>
+            <a href="#contact">Contact</a>
+            <a href="#footer">Support</a>
+          </div>
+          <div>
+            <h4>Services</h4>
+            <a href="#footer">Bulk orders</a>
+            <a href="#footer">Installation help</a>
+            <a href="#footer">Delivery info</a>
+          </div>
+        </div>
+
+        <div className="footer-bottom">
+          <span>© 2025 VoltCart</span>
+          <span>Secure checkout · Trusted service</span>
+        </div>
+      </footer>
+
+      {selectedProduct && (
+        <div className="overlay" onClick={() => setSelectedProduct(null)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <button className="close-button" onClick={() => setSelectedProduct(null)} aria-label="Close product details">
+              <X size={18} />
+            </button>
+            <div className="modal-visual" style={{ background: selectedProduct.color }}>
+              <span>{selectedProduct.icon}</span>
+            </div>
+            <div className="modal-copy">
+              <p className="eyebrow">{selectedProduct.category}</p>
+              <h3>{selectedProduct.name}</h3>
+              <div className="rating-row">
+                <Star size={12} fill="currentColor" />
+                <span>{selectedProduct.rating}</span>
+              </div>
+              <p>{selectedProduct.description}</p>
+              <div className="modal-bottom">
+                <strong>{formatMoney(selectedProduct.price)}</strong>
+                <button className="primary-button" onClick={() => addToCart(selectedProduct)}>
+                  Add to cart
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {accountOpen && (
+        <div className="overlay" onClick={() => setAccountOpen(false)}>
+          <aside className="drawer-panel" onClick={(event) => event.stopPropagation()}>
+            <div className="drawer-header">
+              <h3>{loginMode === 'login' ? 'Account access' : 'Create account'}</h3>
+              <button onClick={() => setAccountOpen(false)} aria-label="Close account panel">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="switcher">
+              <button className={loginMode === 'login' ? 'active' : ''} onClick={() => setLoginMode('login')}>
+                Login
+              </button>
+              <button className={loginMode === 'signup' ? 'active' : ''} onClick={() => setLoginMode('signup')}>
+                Sign up
+              </button>
+            </div>
+
+            <form className="account-form" onSubmit={(event) => event.preventDefault()}>
+              {loginMode === 'signup' && <input type="text" placeholder="Full name" />}
+              <input type="email" placeholder="Email address" />
+              <input type="password" placeholder="Password" />
+              <button type="submit" className="primary-button">
+                {loginMode === 'login' ? 'Login' : 'Create account'}
+              </button>
+            </form>
+          </aside>
+        </div>
+      )}
+
+      {cartOpen && (
+        <div className="overlay" onClick={() => setCartOpen(false)}>
+          <aside className="drawer-panel cart-panel" onClick={(event) => event.stopPropagation()}>
+            <div className="drawer-header">
+              <h3>Your cart</h3>
+              <button onClick={() => setCartOpen(false)} aria-label="Close cart">
+                <X size={18} />
+              </button>
+            </div>
+
+            {cart.length === 0 ? (
+              <div className="empty-cart">
+                <ShoppingCart size={42} />
+                <h4>Your cart is empty</h4>
+                <p>Add products to start building your order.</p>
+                <button className="primary-button" onClick={() => setCartOpen(false)}>
+                  Continue shopping
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="cart-items">
+                  {cart.map((item) => (
+                    <div className="cart-item" key={item.id}>
+                      <div className="cart-thumb" style={{ background: item.color }}>
+                        {item.icon}
+                      </div>
+                      <div className="cart-details">
+                        <h4>{item.name}</h4>
+                        <strong>{formatMoney(item.price)}</strong>
+                        <div className="quantity-box">
+                          <button onClick={() => updateQuantity(item.id, -1)} aria-label="Decrease quantity">
+                            <Minus size={12} />
+                          </button>
+                          <span>{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, 1)} aria-label="Increase quantity">
+                            <Plus size={12} />
+                          </button>
+                          <button className="remove-button" onClick={() => updateQuantity(item.id, -item.quantity)}>
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="cart-summary">
+                  <div>
+                    <span>Subtotal</span>
+                    <strong>{formatMoney(subtotal)}</strong>
+                  </div>
+                  <small>Shipping and taxes calculated at checkout.</small>
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      setCartOpen(false)
+                      setCheckoutOpen(true)
+                    }}
+                  >
+                    Proceed to checkout
+                  </button>
+                </div>
+              </>
+            )}
+          </aside>
+        </div>
+      )}
+
+      {checkoutOpen && (
+        <div className="overlay" onClick={() => setCheckoutOpen(false)}>
+          <div className="checkout-card" onClick={(event) => event.stopPropagation()}>
+            <div className="drawer-header">
+              <h3>Secure checkout</h3>
+              <button onClick={() => setCheckoutOpen(false)} aria-label="Close checkout form">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCheckoutSubmit} className="checkout-form">
+              <input
+                type="text"
+                placeholder="Full name"
+                value={checkoutForm.name}
+                onChange={(event) => setCheckoutForm({ ...checkoutForm, name: event.target.value })}
+                required
+              />
+              <input
+                type="email"
+                placeholder="Email address"
+                value={checkoutForm.email}
+                onChange={(event) => setCheckoutForm({ ...checkoutForm, email: event.target.value })}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Delivery address"
+                value={checkoutForm.address}
+                onChange={(event) => setCheckoutForm({ ...checkoutForm, address: event.target.value })}
+                required
+              />
+              <input
+                type="text"
+                placeholder="City"
+                value={checkoutForm.city}
+                onChange={(event) => setCheckoutForm({ ...checkoutForm, city: event.target.value })}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Card number"
+                value={checkoutForm.card}
+                onChange={(event) => setCheckoutForm({ ...checkoutForm, card: event.target.value })}
+                required
+              />
+              <div className="checkout-total">
+                <span>Total</span>
+                <strong>{formatMoney(subtotal)}</strong>
+              </div>
+              <button type="submit" className="primary-button">
+                Pay {formatMoney(subtotal)}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {notice && <div className="toast">{notice}</div>}
+    </>
+  )
 }
 
 createRoot(document.getElementById('root')).render(<App />)
